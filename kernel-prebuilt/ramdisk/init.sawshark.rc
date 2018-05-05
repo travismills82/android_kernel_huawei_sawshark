@@ -1,0 +1,325 @@
+
+import init.sawshark.usb.rc
+import init.huawei.logserver.rc
+
+on early-init
+    mount debugfs debugfs /sys/kernel/debug
+    chmod 0755 /sys/kernel/debug
+    chown system system /sys/kernel/debug/kgsl/proc
+
+on init
+    mkdir /firmware 0771 system system
+
+    # Set permissions for persist partition
+    mkdir /persist 0771 system system
+
+    # Support legacy paths
+    symlink /sdcard /mnt/sdcard
+    symlink /sdcard /storage/sdcard0
+    mkdir /nvdata 0771 system system
+    mkdir /oem 0771 system system
+
+on fs
+    wait /dev/block/platform/soc/7824900.sdhci/mmcblk0
+    symlink /dev/block/platform/soc/7824900.sdhci /dev/block/bootdevice
+
+    # Mount early filesystem, excluding /data
+    mount_all /fstab.sawshark --early
+
+    # Due to b/68396712, running e2fsck on /data to ensure proper mount.
+    exec - root root -- /system/bin/e2fsck -p -E journal_only /dev/block/platform/soc/7824900.sdhci/by-name/userdata
+
+    # Mount the rest of the filesystem
+    # TODO(alainv): Move this to on late-fs.
+    mount_all /fstab.sawshark --late
+
+    wait /dev/block/bootdevice/by-name/nvdata
+    mount ext4 /dev/block/bootdevice/by-name/nvdata /nvdata nosuid nodev noatime barrier=1
+    restorecon_recursive /nvdata
+
+on post-fs
+    restorecon_recursive /persist
+
+on post-fs-data
+    # save rtc time offsets
+    mkdir /data/time 0700 system system
+    # Set wifi mac address
+    copy /nvdata/MACWLAN /proc/wifi/mac
+
+    # mcfg
+    # Mark the copy complete flag to not completed
+    mkdir /data/vendor/radio 0770 radio radio
+    write /data/vendor/radio/copy_complete 0
+    chown radio radio /data/vendor/radio/copy_complete
+    chmod 0660 /data/vendor/radio/copy_complete
+
+    # rild
+    copy /system/etc/qcril.db /data/vendor/radio/qcril.db
+    chown radio radio /data/vendor/radio/qcril.db
+    chmod 0600 /data/vendor/radio/qcril.db
+
+    # netmgrd
+    mkdir /data/vendor/netmgr 0770 radio radio
+    write /data/vendor/netmgr/log.txt 0
+    chown radio radio /data/vendor/netmgr/log.txt
+    chmod 0660 /data/vendor/netmgr/log.txt
+
+    # Create directories for Location services
+    mkdir /data/misc/location 0770 gps gps
+    mkdir /data/misc/location/gpsone_d 0770 system gps
+
+    # sensor calibrate
+    mkdir /data/misc/sensor 0660 system system
+
+    # CPU frequency, suspend and governor
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor "ondemand"
+    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor "ondemand"
+    write /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate 50000
+    write /sys/devices/system/cpu/cpufreq/ondemand/up_threshold 90
+    write /sys/devices/system/cpu/cpufreq/ondemand/io_is_busy 1
+    write /sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor 4
+
+    setprop vold.post_fs_data_done 1
+
+    #mcfg default for ota update
+    setprop persist.radio.start_ota_daemon 1
+
+    # nfc
+    mkdir /data/nfc
+    chown nfc nfc /data/nfc
+
+    # bluetooth
+    mkdir /data/misc/bluetooth 0770 bluetooth bluetooth
+
+on early-boot
+    #chown root audio /sys/kernel/boot_adsp/boot
+    write /sys/kernel/boot_adsp/boot 1
+    setprop sys.product.type ""
+    setprop sys.bt_modem.type ""
+    #change modem restart level to related
+    write /sys/bus/msm_subsys/devices/subsys2/restart_level related
+
+on boot
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/type
+    chmod 0600 /sys/class/rfkill/rfkill0/type
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/state
+    chmod 0600 /sys/class/rfkill/rfkill0/state
+    chown bluetooth bluetooth /proc/bluetooth/sleep/btwrite
+    chown bluetooth bluetooth /proc/bluetooth/sleep/lpm
+    chown system system /proc/wifi/vendor
+    chown root system /sys/class/power_supply/bms/current_now
+    chown root system /sys/class/power_supply/bms/voltage_ocv
+    chmod 0664 /sys/class/power_supply/bms/current_now
+    chmod 0664 /sys/class/power_supply/bms/voltage_ocv
+    start rmt_storage
+    chmod 755 system/bin/product_identify
+    start product_identify
+
+    # Create QMUX deamon socket area
+    mkdir /dev/socket/qmux_radio 0770 radio radio
+    chmod 2770 /dev/socket/qmux_radio
+    mkdir /dev/socket/qmux_audio 0770 media audio
+    chmod 2770 /dev/socket/qmux_audio
+    mkdir /dev/socket/qmux_bluetooth 0770 bluetooth bluetooth
+    chmod 2770 /dev/socket/qmux_bluetooth
+    mkdir /dev/socket/qmux_gps 0770 gps gps
+    chmod 2770 /dev/socket/qmux_gps
+
+    # Allow QMUX daemon to assign port open wait time
+    chown radio radio /sys/devices/virtual/hsicctl/hsicctl0/modem_wait
+    mkdir /dev/socket/netmgr 0750 radio radio
+
+    chmod 755 system/vendor/bin/qmuxd
+    chmod 755 system/vendor/bin/netmgrd
+    chmod 755 system/vendor/bin/irsc_util
+    chmod 755 system/vendor/bin/qti
+
+    # update foreground cpuset now that processors are up
+    # Make all cpus available until reducing post-boot.
+    write /dev/cpuset/top-app/cpus 0-3
+    write /dev/cpuset/foreground/cpus 0-3
+    write /dev/cpuset/foreground/boost/cpus 0-3
+    write /dev/cpuset/background/cpus 0
+    write /dev/cpuset/system-background/cpus 0
+
+    # chmod and chown nfc /dev/pn544 /dev/p61
+    setprop ro.nfc.port "I2C"
+    chmod 0660 /dev/pn544
+    chmod 0660 /dev/p61
+    chown nfc nfc /dev/pn544
+    chown system system /dev/p61
+
+    # Set the console loglevel to < KERN_INFO
+    # Set the default message loglevel to KERN_INFO
+    write /proc/sys/kernel/printk "6 6 1 7"
+
+# Format the following partitions if they don't have a filesystem
+service setup_fs /system/bin/setup_fs \
+   /dev/block/platform/soc/7824900.sdhci/by-name/userdata  \
+   /dev/block/platform/soc/7824900.sdhci/by-name/cache
+   class core
+   user root
+   group root
+   oneshot
+
+on property:sys.boot_completed=1
+    write /sys/module/lpm_levels/parameters/sleep_disabled 0
+    write /sys/module/lowmemorykiller/parameters/minfree "5399,7230,9060,11853,13684,32768"
+    setprop dalvik.vm.dex2oat-threads 2
+    swapon_all /fstab.sawshark
+    stop cameraserver
+
+on property:sys.cw_home_ready=1
+    # Use userspace governor to set min=max=800MHz
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor "userspace"
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_setspeed 800000
+    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor "userspace"
+    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_setspeed 800000
+    write /sys/class/kgsl/kgsl-3d0/devfreq/max_freq 200000000
+    write /sys/class/kgsl/kgsl-3d0/devfreq/min_freq 200000000
+    write /sys/class/devfreq/soc:qcom,cpubw/governor "bw_hwmon"
+    write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/bw_step 60
+    write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/guard_band_mbps 30
+    write /sys/class/devfreq/soc:qcom,gpubw/bw_hwmon/io_percent 40
+    write /sys/class/devfreq/soc:qcom,gpubw/bw_hwmon/bw_step 60
+    write /sys/class/devfreq/soc:qcom,gpubw/bw_hwmon/guard_band_mbps 30
+
+    write /sys/devices/system/cpu/cpu3/online 0
+    write /sys/devices/system/cpu/cpu2/online 0
+    # Update cpusets once we reduce to dual-core.
+    write /dev/cpuset/top-app/cpus 0-1
+    write /dev/cpuset/foreground/cpus 0-1
+    write /dev/cpuset/foreground/boost/cpus 0-1
+    write /dev/cpuset/background/cpus 0
+    write /dev/cpuset/system-background/cpus 0
+
+on property:init.svc.wpa_supplicant=stopped
+    stop dhcpcd
+
+service irsc_util /system/vendor/bin/irsc_util "/etc/sec_config"
+    class main
+    user root
+    oneshot
+
+service wpa_supplicant /vendor/bin/hw/wpa_supplicant \
+    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
+    -I/system/etc/wifi/wpa_supplicant_overlay.conf \
+    -O/data/misc/wifi/sockets \
+    -e/data/misc/wifi/entropy.bin -g@android:wpa_wlan0
+    #   we will start as root and wpa_supplicant will switch to user wifi
+    #   after setting up the capabilities required for WEXT
+    #   user wifi
+    #   group wifi inet keystore
+    class main
+    socket wpa_wlan0 dgram 660 wifi wifi
+    disabled
+    oneshot
+
+service dhcpcd_wlan0 /system/bin/dhcpcd -ABKLG
+    class late_start
+    disabled
+    oneshot
+
+service iprenew_wlan0 /system/bin/dhcpcd -n
+    class late_start
+    disabled
+    oneshot
+
+service bugreport /system/bin/dumpstate -d -p -B -z \
+        -o /data/user_de/0/com.android.shell/files/bugreports/bugreport
+    class main
+    disabled
+    oneshot
+
+service sensorhd /system/bin/shd
+    class main
+    socket shdctl stream 0666 root root
+    socket shddata stream 0666 root root
+    socket shdgpsdata stream 0666 root root
+    socket shdflpdata stream 0666 root root
+    user  root
+    group root
+    oneshot
+
+service rmt_storage /system/vendor/bin/rmt_storage
+    class core
+    user root
+    group system wakelock
+    disabled
+
+
+service qmuxd /system/vendor/bin/qmuxd
+    class main
+    user radio
+    group radio audio bluetooth gps nfc diag
+    disabled
+    oneshot
+
+service netmgrd /system/vendor/bin/netmgrd
+    class main
+    disabled
+#delete oneshot prop to avoid netmgrd can not restart after init fail.
+#    oneshot
+
+service qti /system/vendor/bin/qti
+    class main
+    user radio
+    group radio net_raw diag usb net_admin
+    disabled
+    oneshot
+
+on property:ro.use_data_netmgrd=false
+    # netmgr not supported on specific target
+    stop netmgrd
+
+service bt_vendor /system/bin/bt_vendor.sh
+    class main
+    user system
+    group system
+    oneshot
+
+service time_daemon /system/bin/time_daemon
+    class late_start
+    user root
+    group system
+
+on property:sys.bt_modem.type=MODEM-BOARD
+    write /dev/kmsg "Start Modem service"
+    start qmuxd
+    start qti
+    start netmgrd
+    start ril-daemon
+
+on property:sys.bt_modem.type=BT-BOARD
+    write /dev/kmsg "Start BT service"
+
+service product_identify /system/bin/product_identify
+    class main
+    disabled
+    oneshot
+
+service emmc_ffu /system/bin/emmc_fw_update
+    class main
+    oneshot
+
+#start mcfg init config
+service init_mcfg /system/bin/init_mcfg.sh
+    class main
+    user radio
+    group radio system
+    oneshot
+
+on property:ro.oem.inchina=true
+    write /dev/kmsg "Start Qseecomd service"
+    start qseecomd
+
+service qseecomd /system/vendor/bin/qseecomd
+    class main
+    oneshot
+
+on property:sys.cw_retail_mode=1
+    write /sys/class/power_supply/battery/retail_mode 1
+
+on property:sys.notify_user_paired=1
+    write /sys/class/power_supply/battery/notify_user_paired 1
+    setprop sys.notify_user_paired 0
