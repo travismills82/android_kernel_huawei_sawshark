@@ -172,13 +172,13 @@ on property:sys.boot_completed=1
 
 on property:sys.cw_home_ready=1
     write /sys/devices/system/cpu/cpu0/cpufreq/max_freq 1267200
-    write /sys/devices/system/cpu/cpu0/cpufreq/min_freq 800000
+    write /sys/devices/system/cpu/cpu0/cpufreq/min_freq 400000
     write /sys/devices/system/cpu/cpu1/cpufreq/max_freq 1267200
-    write /sys/devices/system/cpu/cpu1/cpufreq/min_freq 800000
+    write /sys/devices/system/cpu/cpu1/cpufreq/min_freq 400000
     write /sys/devices/system/cpu/cpu2/cpufreq/max_freq 1267200
-    write /sys/devices/system/cpu/cpu2/cpufreq/min_freq 800000
+    write /sys/devices/system/cpu/cpu2/cpufreq/min_freq 400000
     write /sys/devices/system/cpu/cpu3/cpufreq/max_freq 1267200
-    write /sys/devices/system/cpu/cpu3/cpufreq/min_freq 800000
+    write /sys/devices/system/cpu/cpu3/cpufreq/min_freq 400000
     write /sys/class/kgsl/kgsl-3d0/devfreq/max_freq 307200000
     write /sys/class/kgsl/kgsl-3d0/devfreq/min_freq 200000000
     write /sys/class/devfreq/soc:qcom,cpubw/governor "bw_hwmon"
