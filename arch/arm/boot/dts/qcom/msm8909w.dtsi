@@ -30,20 +30,20 @@
 		clock-names = "clk-4", "clk-5";
 		qcom,a7ssmux-opp-store-vcorner = <&CPU0>;
 		qcom,speed0-bin-v0 =
-			<          0 0>,
-			<  800000000 4>,
+			<  800000000 0>,
+			< 1094400000 4>,
 			< 1267200000 9>;
 
 		qcom,speed2-bin-v0 =
-			<          0 0>,
-			<  800000000 4>,
-			< 1094400000 6>;
+			<  800000000 0>,
+			< 1094400000 4>,
+			< 1267200000 9>;
 		#clock-cells = <1>;
 	};
 
 	/delete-node/ qcom,msm-cpufreq;
 	qcom,msm-cpufreq {
-		reg = <0 4>;
+		reg = <0 4 9>;
 		compatible = "qcom,msm-cpufreq";
 		clocks = <&clock_cpu  clk_a7ssmux>,
 			 <&clock_cpu  clk_a7ssmux>,
