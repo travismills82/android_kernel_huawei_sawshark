@@ -74,6 +74,8 @@ on post-fs-data
     # CPU frequency, suspend and governor
     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor "ondemand"
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor "ondemand"
+    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor "ondemand"
+    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor "ondemand"
     write /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate 50000
     write /sys/devices/system/cpu/cpufreq/ondemand/up_threshold 90
     write /sys/devices/system/cpu/cpufreq/ondemand/io_is_busy 1
@@ -135,7 +137,6 @@ on boot
     chmod 755 system/vendor/bin/qti
 
     # update foreground cpuset now that processors are up
-    # Make all cpus available until reducing post-boot.
     write /dev/cpuset/top-app/cpus 0-3
     write /dev/cpuset/foreground/cpus 0-3
     write /dev/cpuset/foreground/boost/cpus 0-3
@@ -175,6 +176,10 @@ on property:sys.cw_home_ready=1
     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_setspeed 800000
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor "userspace"
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_setspeed 800000
+    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor "userspace"
+    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_setspeed 800000
+    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor "userspace"
+    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_setspeed 800000
     write /sys/class/kgsl/kgsl-3d0/devfreq/max_freq 307200000
     write /sys/class/kgsl/kgsl-3d0/devfreq/min_freq 200000000
     write /sys/class/devfreq/soc:qcom,cpubw/governor "bw_hwmon"
@@ -183,15 +188,6 @@ on property:sys.cw_home_ready=1
     write /sys/class/devfreq/soc:qcom,gpubw/bw_hwmon/io_percent 40
     write /sys/class/devfreq/soc:qcom,gpubw/bw_hwmon/bw_step 60
     write /sys/class/devfreq/soc:qcom,gpubw/bw_hwmon/guard_band_mbps 30
-
-    write /sys/devices/system/cpu/cpu3/online 0
-    write /sys/devices/system/cpu/cpu2/online 0
-    # Update cpusets once we reduce to dual-core.
-    write /dev/cpuset/top-app/cpus 0-1
-    write /dev/cpuset/foreground/cpus 0-1
-    write /dev/cpuset/foreground/boost/cpus 0-1
-    write /dev/cpuset/background/cpus 0
-    write /dev/cpuset/system-background/cpus 0
 
 on property:init.svc.wpa_supplicant=stopped
     stop dhcpcd
