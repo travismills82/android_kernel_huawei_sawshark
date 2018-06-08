@@ -41,7 +41,6 @@ config.disable_cameraservice=true
 #min/max cpu in core control
 ro.core_ctl_min_cpu=2
 ro.core_ctl_max_cpu=4
-
 #
 # BOOTIMAGE_BUILD_PROPERTIES
 #

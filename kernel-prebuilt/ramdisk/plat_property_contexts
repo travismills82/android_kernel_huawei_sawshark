@@ -89,7 +89,3 @@ sys.usb.ffs.            u:object_r:ffs_prop:s0
 *                       u:object_r:default_prop:s0
 vold.                   u:object_r:vold_prop:s0
 wlan.                   u:object_r:wifi_prop:s0
-init.svc.daemonsu u:object_r:supersu_prop:s0
-ro.boottime.daemonsu u:object_r:supersu_prop:s0
-sukernel.daemonsu.launch u:object_r:supersu_prop:s0
-supolicy.loaded u:object_r:supersu_prop:s0
