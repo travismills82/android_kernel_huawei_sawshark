@@ -41,6 +41,12 @@ config.disable_cameraservice=true
 #min/max cpu in core control
 ro.core_ctl_min_cpu=2
 ro.core_ctl_max_cpu=4
+boot.fps=30
+shutdown.fps=30
+ro.config.hw_quickpoweron=true
+ro.config.hw_power_saving=true
+ro.config.hw_fast_dormancy=1
+persist.sys.shutdown.mode=hibernate
 #
 # BOOTIMAGE_BUILD_PROPERTIES
 #
