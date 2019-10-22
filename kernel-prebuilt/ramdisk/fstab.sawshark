@@ -11,7 +11,7 @@
 /dev/block/platform/soc/7824900.sdhci/by-name/cache        /cache            ext4    noatime,nosuid,nodev,barrier=1,data=ordered,discard                                            wait,check
 /dev/block/platform/soc/7824900.sdhci/by-name/modem        /firmware         vfat    ro,shortname=lower,uid=1000,gid=1000,dmask=227,fmask=337,context=u:object_r:firmware_file:s0   wait
 /devices/platform/msm_hsusb                                /storage/usbotg   vfat    nosuid,nodev                                                                                   wait,voldmanaged=usbotg:auto
-/dev/block/zram0                                           none              swap    defaults zramsize=200435456,swapprio=32758
+/dev/block/zram0                                           none              swap    defaults zramsize=200435456,max_comp_streams=4,notrim
 /dev/block/bootdevice/by-name/config                       /persistent       emmc    defaults defaults
 /dev/block/platform/soc/7824900.sdhci/by-name/misc         /misc             emmc    defaults defaults
 /dev/block/platform/soc/7824900.sdhci/by-name/oem          /oem              ext4    ro,nosuid,nodev,barrier=1,context=u:object_r:oemfs:s0,noauto_da_alloc,discard                  wait
